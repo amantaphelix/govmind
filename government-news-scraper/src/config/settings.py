@@ -1,9 +1,13 @@
 # config/settings.py
+from dotenv import load_dotenv
 import os
 from pathlib import Path
+load_dotenv()
 
 # Database Configuration
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb+srv://amantaphelix:amantaphelix@cluster0.mmmiw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+MONGODB_URI = os.getenv('MONGODB_URI')
+if not MONGODB_URI:
+    raise ValueError("MONGODB_URI is not set in the environment variables.")
 
 # Scraper Configuration
 BASE_CACHE_DIR = Path('cache')
