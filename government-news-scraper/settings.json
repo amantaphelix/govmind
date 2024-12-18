@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "$government-news-scraper/venv/Lib/site-packages"
+    ]
+}
