@@ -9,6 +9,15 @@ from scrapers.livemint_scraper import LiveMintScraper
 from scrapers.zee_scraper import ZeeNewsScraper
 from scrapers.deccan_chronicle import DeccanChronicleScraper
 from scrapers.indianexpress import IndianExpressScraper
+from scrapers.cnn import CNNNews18Scraper
+from scrapers.timesnow import TimesNowScraper
+from scrapers.firstpost import FirstPostScraper
+from scrapers.dd import DDIndiaScraper
+from scrapers.news18 import News18Scraper
+from scrapers.quint import QuintScraper
+from scrapers.asianetnews import AsianetNewsScraper
+from scrapers.mathrubhumi import MathrubhumiScraper
+from scrapers.thepioneer import PioneerScraper
 from utils.data_cleaner import DataCleaner
 from database.db_manager import DatabaseManager
 from config.settings import MONGODB_URI
@@ -31,20 +40,29 @@ def main():
 
     scrapers = [
         #IndiaTodayScraper(),   #settayi
-        #HinduScraper()
-        TOIScraper()
-        #DeccanChronicleScraper(),
-        #NDTVScraper(),
-        #HindustanTimesScraper() # Robots.txt disallows
-        #ZeeNewsScraper(),
-        #LiveMintScraper(),        # Robots.txt disallows
+        #HinduScraper() #settayi
         #IndianExpressScraper(),     # setayiii   Sitemap-based scraper
-        #DeccanChronicleScraper()  #settaayi
+        #DeccanChronicleScraper(),  #settaayi
+        #ZeeNewsScraper() #settayi
+        #QuintScraper() #settayi
+        #AsianetNewsScraper() #settayi
+        #TOIScraper()  #90% settayi
+        #News18Scraper() #settayi but crct news anon doubt
+        #NDTVScraper() #settayi
+
+        #PioneerScraper() #
+        #HindustanTimesScraper() # Robots.txt disallows
+        #LiveMintScraper(),        # Robots.txt disallows
+        #CNNNews18Scraper(), #robots.txt disallows
+        #DDIndiaScraper(), #robots.txt disallows
+        #FirstPostScraper() #hrdyak set baki aakanond,international and verentho news anu varanath athum only found headline
+        TimesNowScraper() #conent keranilla hridhya
+        #MathrubhumiScraper() #ann
     ]
 
     for scraper in scrapers:
         try:
-            if isinstance(scraper, IndianExpressScraper):
+            if isinstance(scraper, (IndianExpressScraper,ZeeNewsScraper,NDTVScraper,News18Scraper)):
                 # Special handling for sitemap-based scraper
                 logger.info(f"Starting sitemap scraping with {scraper.__class__.__name__}")
                 urls = scraper.fetch_sitemap_urls(limit=5)
@@ -53,6 +71,9 @@ def main():
                     continue
 
                 news_items = scraper.extract_government_news(urls)
+            elif isinstance(scraper, (HindustanTimesScraper, NDTVScraper)):
+                # Directly use the extract_government_news method for HindustanTimesScraper
+                news_items = scraper.extract_government_news()
             else:
                 # Standard scrapers
                 soup = scraper.get_page_content(scraper.base_url)

@@ -76,33 +76,27 @@ class ZeeNewsScraper(BaseScraper):
             return None
 
         # Extract article content
-        content_div = soup.find("div", class_="article_content article_description")
+        content_div = soup.find("div", class_="article_content")
         if not content_div:
             self.logger.warning(f"Could not find content for: {news_item['url']}")
             return None
 
-        content = ' '.join(p.get_text(strip=True) for p in content_div.find_all("p") if p.get_text(strip=True))
+        # Extract all text content dynamically
+        content = ' '.join(element.get_text(strip=True) for element in content_div.find_all(recursive=True) if element.get_text(strip=True))
+        
         if content:
-            # Log full content length for debugging
-            self.logger.debug(f"Extracted content length: {len(content)}")
-            self.logger.debug(f"Extracted content preview: {content[:500]}...")  # Preview for logs
-
-            # Ensure UTF-8 encoding
-            news_item["content"] = content.encode('utf-8', errors='ignore').decode('utf-8')
+            news_item["content"] = content
             self.logger.info(f"Extracted content ({len(content)} chars) for article: {news_item['title']}")
             return news_item
 
         self.logger.warning(f"Failed to extract content for: {news_item['url']}")
         return None
 
+
     def _is_government_news(self, title):
         """Check if the title contains government-related keywords."""
         keywords = [
-            'government', 'minister', 'policy', 'parliament',
-            'cabinet', 'legislation', 'bureaucracy', 'official',
-            'modi', 'ministry', 'supreme court', 'high court',
-            'bjp', 'congress', 'election', 'commission', 'bill',
-            'lok sabha', 'rajya sabha', 'governor', 'pm',
-            'chief minister', 'mla', 'mp', 'president', 'govt'
+            'government', 'minister', 'policy', 'parliament', 'cabinet', 'modi',
+            'congress', 'bjp', 'election', 'supreme court', 'lok sabha', 'rajya sabha'
         ]
         return any(keyword in title.lower() for keyword in keywords)

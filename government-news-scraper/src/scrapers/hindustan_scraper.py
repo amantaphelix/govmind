@@ -1,120 +1,130 @@
-from .base_scraper import BaseScraper
-import re
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import logging
+from .base_scraper import BaseScraper
 
 class HindustanTimesScraper(BaseScraper):
     def __init__(self):
         super().__init__("https://www.hindustantimes.com/")
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def extract_government_news(self, soup):
+    def extract_government_news(self, soup=None):
         """
-        Extract government-related news articles from the soup object
-        
-        Args:
-            soup (BeautifulSoup): Parsed HTML content
-        
+        Extract government-related news articles using Selenium and BeautifulSoup.
+
         Returns:
-            list: List of government news items with title and URL
+            list: List of government news items with title and URL.
         """
         news_items = []
 
-        # Selectors for finding articles
-        article_selectors = [
-            ('div', 'media-heading'),
-            ('div', 'hdg3'),
-            ('div', 'story-content'),
-            ('div', 'bigstory'),
-            ('div', 'news-category-name'),
-        ]
+        # Selenium setup
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--log-level=3')  # Suppresses unwanted browser logs
+        driver = webdriver.Chrome(options=options)
 
-        all_articles = []
-        for tag, class_name in article_selectors:
-            found_articles = soup.find_all(tag, class_=re.compile(class_name))
-            self.logger.info(f"Found {len(found_articles)} articles with selector {tag}.{class_name}")
-            all_articles.extend(found_articles)
+        try:
+            self.logger.info(f"Fetching URL: {self.base_url}")
+            driver.get(self.base_url)
 
-        self.logger.info(f"Total articles found: {len(all_articles)}")
+            # Wait for key elements to load
+            wait = WebDriverWait(driver, 20)
+            wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'cartHolder')))
 
-        for article in all_articles:
-            # Extract title and link
-            title_elem = article.find('a')
-            link_elem = article.find('a')
+            # Extract page content
+            page_source = driver.page_source
+            soup = BeautifulSoup(page_source, 'html.parser')
 
-            if title_elem and link_elem:
-                title_text = title_elem.get_text(strip=True)
-                link_href = link_elem.get('href', '')
+            # Article selectors
+            sections = [
+                ('div', 'cartHolder bigCart track timeAgo'),
+                ('div', 'cartHolder listView track timeAgo')
+            ]
 
-                # Log the extracted title and link for debugging
-                self.logger.debug(f"Extracted Title: {title_text}, Link: {link_href}")
+            for tag, class_name in sections:
+                articles = soup.find_all(tag, class_=class_name)
+                self.logger.info(f"Found {len(articles)} articles in section {class_name}")
 
-                # Ensure full URL
-                if link_href.startswith('/'):
-                    link_href = urljoin(self.base_url, link_href)
+                for article in articles:
+                    title_elem = article.find('h3', class_='hdg3')
+                    link_elem = title_elem.find('a') if title_elem else None
 
-                # Check if the article is government-related
-                if self._is_government_news(title_text):
-                    news_items.append({
-                        'title': title_text,
-                        'link': link_href
-                    })
-                    self.logger.info(f"Found government news: Title: {title_text}, Link: {link_href}")
-                else:
-                    self.logger.info(f"Skipped non-government news: Title: {title_text}, Link: {link_href}")
+                    if title_elem and link_elem:
+                        title_text = title_elem.get_text(strip=True)
+                        link_href = link_elem['href']
 
+                        # Ensure full URL
+                        if link_href.startswith('/'):
+                            link_href = urljoin(self.base_url, link_href)
+
+                        # Check if it's government-related news
+                        if self._is_government_news(title_text):
+                            news_items.append({
+                                'title': title_text,
+                                'url': link_href
+                            })
+                            self.logger.info(f"Added government news: Title: {title_text}, Link: {link_href}")
+                        else:
+                            self.logger.debug(f"Skipped non-government news: Title: {title_text}")
+                    else:
+                        self.logger.warning(f"Missing title or link in article: {article}")
+
+        except Exception as e:
+            self.logger.error(f"Error during extraction: {e}", exc_info=True)
+
+        finally:
+            driver.quit()
+
+        self.logger.info(f"Total government-related news items: {len(news_items)}")
         return news_items
 
     def process_news_item(self, news_item):
+        """
+        Process the news item by fetching its content.
+
+        Args:
+            news_item (dict): A dictionary containing the title and URL of a news item.
+
+        Returns:
+            dict: A dictionary containing the full content of the article or None if extraction fails.
+        """
         self.logger.info(f"Processing article: {news_item['title']}")
 
-        # Respect rate limits and fetch the page
-        self._respect_rate_limits()
-        soup = self.get_page_content(news_item['link'])
-
+        # Fetch the article page content
+        soup = self.get_page_content(news_item['url'])
         if not soup:
-            self.logger.warning(f"Could not fetch content for: {news_item['link']}")
+            self.logger.warning(f"Could not fetch content for: {news_item['url']}")
             return None
 
-        # Selectors for article content
-        selectors = [
-            ('div', 'story-details'),
-            ('div', 'content'),
-            ('section', 'storyContent'),
-            ('div', 'storyBody'),
-        ]
-
-        article_body = None
-        for tag, class_name in selectors:
-            article_body = soup.find(tag, class_=re.compile(class_name))
-            if article_body:
-                self.logger.info(f"Found content with selector: {tag}.{class_name}")
-                break
-
+        # Extract the article body
+        article_body = soup.find('div', class_='article-body')  # Adjust the class name as needed
         if article_body:
-            paragraphs = article_body.find_all('p')
-            content = ' '.join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+            paragraphs = article_body.find_all(['p', 'div', 'span'])
+            content = " ".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+            news_item['content'] = content
+            return news_item
 
-            if content:
-                news_item['content'] = content
-                self.logger.info(f"Successfully extracted content ({len(content)} chars) for article: {news_item['title']}")
-                return news_item
-
-        self.logger.warning(f"Could not find article body for: {news_item['link']}")
+        self.logger.warning(f"Could not find article body for: {news_item['url']}")
         return None
 
     def _is_government_news(self, title):
         """
-        Determine if the news is government-related
-        
+        Check if the article title contains government-related keywords.
+
         Args:
-            title (str): Title of the news article
-        
+            title (str): Title of the news article.
+
         Returns:
-            bool: True if the title contains government-related keywords, False otherwise
+            bool: True if the title contains government-related keywords, False otherwise.
         """
         government_keywords = [
-            'government', 'minister', 'policy', 'parliament', 
+            'government', 'minister', 'policy', 'parliament',
             'cabinet', 'legislation', 'bureaucracy', 'official',
             'modi', 'ministry', 'supreme court', 'high court',
             'bjp', 'congress', 'election', 'commission', 'bill',
@@ -124,8 +134,5 @@ class HindustanTimesScraper(BaseScraper):
 
         title_lower = title.lower()
         match = any(keyword in title_lower for keyword in government_keywords)
-        
-        # Log the matching result for debugging
         self.logger.debug(f"Checking title: {title}, Government-related match found: {match}")
-        
         return match
