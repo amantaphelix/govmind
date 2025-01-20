@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="article-container">
+    <div class="article-header">
+        <img src="{{ article.image.url }}" alt="{{ article.title }}">
+        <h1>{{ article.title }}</h1>
+    </div>
+    <div class="sentiment-summary">
+        <div class="sentiment-item positive">
+            <span>Positive</span>
+            <span>{{ article.positive_percentage }}%</span>
+        </div>
+        <div class="sentiment-item negative">
+            <span>Negative</span>
+            <span>{{ article.negative_percentage }}%</span>
+        </div>
+        <div class="sentiment-item neutral">
+            <span>Neutral</span>
+            <span>{{ article.neutral_percentage }}%</span>
+        </div>
+    </div>
+    <div class="article-content">
+        {{ article.content|safe }}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Dashboard</title>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="Logo" class="logo">
+        </div>
+        <div class="nav-links">
+            <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+        </div>
+    </nav>
+    
+    {% block content %}{% endblock %}
+    
+    <footer class="footer">
+        <p>&copy; {% now "Y" %} News Dashboard. All rights reserved.</p>
+    </footer>
+</body>
+</html>

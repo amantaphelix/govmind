@@ -1,0 +1,57 @@
+<!-- templates/dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <form method="GET" class="search-form">
+            <input type="text" name="search" placeholder="Search news..." value="{{ request.GET.search }}">
+            <input type="date" name="date" value="{{ request.GET.date }}">
+            <select name="sentiment">
+                <option value="">All Sentiments</option>
+                <option value="positive">Positive</option>
+                <option value="negative">Negative</option>
+                <option value="neutral">Neutral</option>
+            </select>
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    <!-- News Cards Grid -->
+    <div class="news-grid">
+        {% for article in articles %}
+        <div class="news-card">
+            <div class="card-image">
+                <img src="{{ article.image.url }}" alt="{{ article.title }}">
+            </div>
+            <div class="card-content">
+                <h3>{{ article.title }}</h3>
+                <div class="sentiment-bars">
+                    <div class="sentiment-bar">
+                        <span>Positive: {{ article.positive_percentage }}%</span>
+                        <div class="bar" style="width: {{ article.positive_percentage }}%"></div>
+                    </div>
+                    <div class="sentiment-bar">
+                        <span>Negative: {{ article.negative_percentage }}%</span>
+                        <div class="bar" style="width: {{ article.negative_percentage }}%"></div>
+                    </div>
+                    <div class="sentiment-bar">
+                        <span>Neutral: {{ article.neutral_percentage }}%</span>
+                        <div class="bar" style="width: {{ article.neutral_percentage }}%"></div>
+                    </div>
+                </div>
+                <a href="{% url 'article_detail' article.id %}" class="read-more">Read More</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+<!-- templates/base.html -->
+
+
+<!-- templates/article_detail.html -->
+
